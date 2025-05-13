@@ -1,0 +1,52 @@
+.App {
+  text-align: center;
+  padding: 20px;
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+p {
+  font-size: 1.1rem;
+  color: #5e6c7b;
+  margin-bottom: 20px;
+}
+
+.language-buttons, .difficulty-buttons, .buttons {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.language-buttons button,
+.difficulty-buttons button,
+.buttons button {
+  padding: 12px 24px;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+}
+
+.language-buttons button:hover,
+.difficulty-buttons button:hover,
+.buttons button:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+.result-message {
+  font-size: 1.2rem;
+  margin-top: 20px;
+  color: green;
+}

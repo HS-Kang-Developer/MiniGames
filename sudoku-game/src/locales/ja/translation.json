@@ -1,0 +1,13 @@
+{
+  "title": "数独パズル",
+  "selectLanguage": "言語を選択してください",
+  "selectLevel": "ゲームレベルを選択してください",
+  "easy": "初級",
+  "normal": "中級",
+  "hard": "上級",
+  "currentLevel": "現在のレベル",
+  "checkAnswer": "答えをチェック",
+  "reset": "選び直す",
+  "correct": "正解です！🎉",
+  "incorrect": "間違いがあります。😢"
+}

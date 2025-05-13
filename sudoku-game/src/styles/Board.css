@@ -1,0 +1,45 @@
+.sudoku-board {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(30px, 1fr));
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  width: clamp(300px, 60vw, 600px); /* 반응형 크기 */
+  margin: 0 auto;
+}
+
+.sudoku-row {
+  display: contents;
+}
+
+.sudoku-cell {
+  aspect-ratio: 1 / 1; /* 정사각형 유지 */
+  text-align: center;
+  font-size: clamp(16px, 3vw, 24px); /* 글자 크기 자동조절 */
+  border: 1px solid #ccc;
+}
+
+.fixed-cell {
+  background-color: #e0e0e0;
+  font-weight: bold;
+  color: #333;
+  cursor: not-allowed;
+}
+
+.incorrect-cell {
+  border: 2px solid red;
+  color: red;
+}
+
+/* 모바일 대응 */
+@media (max-width: 480px) {
+  .sudoku-board {
+    width: 90vw;
+  }
+
+  .sudoku-cell {
+    font-size: clamp(20px, 5vw, 28px);
+  }
+}
