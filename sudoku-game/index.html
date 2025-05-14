@@ -4,9 +4,15 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/MiniGames/sudoku-game/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
-    <script type="module" crossorigin src="/MiniGames/sudoku-game/assets/index-3ef8d97d.js"></script>
-    <link rel="stylesheet" href="/MiniGames/sudoku-game/assets/index-4a9878d7.css">
+    <title>Sudoku Puzzle</title>
+    <script>
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS) {
+        document.body.classList.add('ios');
+      }
+    </script>
+    <script type="module" crossorigin src="/MiniGames/sudoku-game/assets/index-5a275c08.js"></script>
+    <link rel="stylesheet" href="/MiniGames/sudoku-game/assets/index-bf1e0b64.css">
   </head>
   <body>
     <div id="root"></div>
