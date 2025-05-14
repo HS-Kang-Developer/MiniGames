@@ -8,6 +8,9 @@
   "currentLevel": "現在のレベル",
   "checkAnswer": "答えをチェック",
   "reset": "選び直す",
+  "clearInputs": "入力をリセット",
   "correct": "正解です！🎉",
-  "incorrect": "間違いがあります。😢"
+  "incorrect": "間違いがあります。😢",
+  "confirmReset": "入力内容をすべてクリアしてレベル選択に戻りますか？",
+  "confirmClearInputs": "入力した内容をすべてリセットしますか？"
 }

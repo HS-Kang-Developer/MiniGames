@@ -1,31 +1,33 @@
 .sudoku-board {
   display: grid;
-  grid-template-columns: repeat(9, minmax(30px, 1fr));
-  gap: 2px;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-  width: clamp(300px, 60vw, 600px); /* 반응형 크기 */
+  grid-template-columns: repeat(3, auto);
+  grid-template-rows: repeat(3, auto);
+  gap: 4px;
+  padding: 10px;
+  width: clamp(300px, 60vw, 600px);
   margin: 0 auto;
 }
 
-.sudoku-row {
-  display: contents;
+.sudoku-block {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  border: 2px solid #000;
 }
 
 .sudoku-cell {
-  aspect-ratio: 1 / 1; /* 정사각형 유지 */
+  width: 100%;
+  aspect-ratio: 1 / 1;
   text-align: center;
-  font-size: clamp(16px, 3vw, 24px); /* 글자 크기 자동조절 */
-  border: 1px solid #ccc;
+  font-size: clamp(18px, 5vw, 28px);
+  border: 1px solid #bbb;
+  box-sizing: border-box;
 }
 
 .fixed-cell {
-  background-color: #e0e0e0;
+  background-color: #d0d0d0;
   font-weight: bold;
-  color: #333;
-  cursor: not-allowed;
+  color: #222;
 }
 
 .incorrect-cell {
@@ -40,6 +42,6 @@
   }
 
   .sudoku-cell {
-    font-size: clamp(20px, 5vw, 28px);
+    font-size: clamp(20px, 6vw, 32px);
   }
 }

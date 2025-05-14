@@ -5,7 +5,6 @@ import Board from './components/Board';
 import { generateSudoku } from './utils/sudoku';
 import './styles/App.css';
 
-
 function App() {
   const { t, i18n } = useTranslation();
 
@@ -46,7 +45,7 @@ function App() {
   };
 
   const handleCheckAnswer = () => {
-    let newIncorrectCells = [];
+    const newIncorrectCells = [];
 
     for (let row = 0; row < 9; row++) {
       for (let col = 0; col < 9; col++) {
@@ -62,27 +61,39 @@ function App() {
     }
 
     setIncorrectCells(newIncorrectCells);
-
-    setMessage(newIncorrectCells.length === 0 ? `${t('correct')}` : `${t('incorrect')}`);
+    setMessage(newIncorrectCells.length === 0 ? t('correct') : t('incorrect'));
   };
 
-  const resetGame = () => {
-    setGameStarted(false);
-    setBoard([]);
-    setSolution([]);
-    setInitialBoard([]);
-    setIncorrectCells([]);
-    setMessage('');
+  const handleResetGame = () => {
+    if (window.confirm(t('confirmReset'))) {
+      setGameStarted(false);
+      setBoard([]);
+      setSolution([]);
+      setInitialBoard([]);
+      setIncorrectCells([]);
+      setMessage('');
+    }
+  };
+
+  const handleClearInputs = () => {
+    if (window.confirm(t('confirmClearInputs'))) {
+      const clearedBoard = board.map((row, rowIndex) =>
+        row.map((cell, colIndex) => (initialBoard[rowIndex][colIndex] === '' ? '' : cell))
+      );
+      setBoard(clearedBoard);
+      setIncorrectCells([]);
+      setMessage('');
+    }
   };
 
   if (!languageSelected) {
     return (
       <div className="App">
-        <h1>스도쿠 퍼즐 <br></br> 数独パズル</h1>
+        <h1>스도쿠 퍼즐 <br /> 数独パズル</h1>
         <p>원하는 언어를 선택하세요 / 言語を選んでください</p>
         <div className="language-buttons">
           <button onClick={() => changeLanguage('ko')}>한국어 / 韓国語</button>
-          <button onClick={() => changeLanguage('ja')}>일본어 / 日本語</button>
+          <button onClick={() => changeLanguage('ja')}>日本語 / 일본어</button>
         </div>
       </div>
     );
@@ -114,7 +125,8 @@ function App() {
 
           <div className="buttons">
             <button onClick={handleCheckAnswer}>{t('checkAnswer')}</button>
-            <button onClick={resetGame}>{t('reset')}</button>
+            <button onClick={handleClearInputs}>{t('clearInputs')}</button>
+            <button onClick={handleResetGame}>{t('reset')}</button>
           </div>
 
           {message && <p className="result-message">{message}</p>}
