@@ -2,5 +2,12 @@
   "dependencies": {
     "i18next": "^25.1.2",
     "react-i18next": "^15.5.1"
+  },
+  "scripts": {
+    "build": "npm --prefix sudoku-game run build && node scripts/copy-puzzle-arena.cjs",
+    "predeploy": "npm run build",
+    "deploy": "node sudoku-game/node_modules/gh-pages/bin/gh-pages.js -d dist",
+    "preview": "node scripts/preview.cjs",
+    "test": "node --test tests/build-output.test.cjs"
   }
 }
