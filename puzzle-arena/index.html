@@ -104,6 +104,14 @@
               <div class="board-meta"><span id="board-dimensions">5 ROWS · 5 COLUMNS</span><span class="legend"><i></i><span id="blank-label">빈칸</span></span></div>
               <div class="board-wrap"><div class="board" id="board" role="grid" aria-label="숫자 격자"></div></div>
               <p class="board-note" id="board-note">격자 선을 따라 만든 직사각형을 셉니다. 한 칸짜리도 포함돼요.</p>
+              <div class="cube-controls" id="cube-controls" hidden>
+                <p id="cube-drag-guide">마우스나 손가락으로 드래그해 회전하고 기울여 보세요. 방향키로도 조작할 수 있어요.</p>
+                <div class="cube-view-actions">
+                  <button class="button button-quiet" id="reset-cube-view" type="button">시점 초기화</button>
+                  <button class="button button-quiet" id="show-columns" type="button" aria-expanded="false" aria-controls="column-view">기둥별 보기</button>
+                </div>
+                <div class="column-view" id="column-view" hidden></div>
+              </div>
             </div>
 
             <div class="target-answer-row">
@@ -114,10 +122,15 @@
                   <button class="button button-primary" id="submit-answer" type="button"><span id="submit-label">확인</span><span aria-hidden="true">→</span></button>
                 </div>
                 <p class="feedback" id="answer-feedback" role="status" aria-live="polite">빈칸은 합계에 포함되지 않습니다.</p>
-                <div class="answer-actions"><button class="hint-button" id="show-hint" type="button" aria-expanded="false" aria-controls="hint-box"><span aria-hidden="true">✦</span><span id="hint-label">힌트 보기</span></button><button class="next-button" id="next-puzzle" type="button" hidden><span id="next-label">다음 문제</span> <span aria-hidden="true">→</span></button></div>
+                <div class="answer-actions"><button class="hint-button" id="show-hint" type="button" aria-expanded="false" aria-controls="hint-box"><span aria-hidden="true">✦</span><span id="hint-label">힌트 보기</span></button><button class="give-up-button" id="give-up" type="button">포기</button><button class="next-button" id="next-puzzle" type="button" hidden><span id="next-label">다음 문제</span> <span aria-hidden="true">→</span></button></div>
                 <div class="hint-box" id="hint-box" hidden aria-live="polite"></div>
               </div>
             </div>
+            <section class="solution-panel" id="solution-panel" aria-labelledby="solution-title" hidden>
+              <h2 id="solution-title">풀이</h2>
+              <p id="solution-summary"></p>
+              <ol id="solution-list"></ol>
+            </section>
           </div>
 
           <aside class="game-sidebar">
