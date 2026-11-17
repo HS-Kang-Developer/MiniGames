@@ -82,11 +82,34 @@ async function withGame(callback, { language = 'ko', blogLanguage, blockedStorag
   try {
     await loaded;
     const window = frame.contentWindow;
+    const frames = new Map();
+    let frameId = 0;
+    window.requestAnimationFrame = callback => { frames.set(++frameId, callback); return frameId; };
+    window.cancelAnimationFrame = id => frames.delete(id);
+    const flushFrames = () => {
+      const callbacks = [...frames.values()];
+      frames.clear();
+      callbacks.forEach(callback => callback());
+    };
+    const board = window.document.querySelector('#board');
+    const captures = new Set();
+    board.setPointerCapture = id => captures.add(id);
+    board.hasPointerCapture = id => captures.has(id);
+    board.releasePointerCapture = id => captures.delete(id);
+    const pointer = (type, values = {}) => {
+      const { pointerId = 1, pointerType = 'mouse', isPrimary = true, ...mouse } = values;
+      const event = new window.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, ...mouse });
+      Object.defineProperties(event, {
+        pointerId: { value: pointerId }, pointerType: { value: pointerType }, isPrimary: { value: isPrimary },
+      });
+      board.dispatchEvent(event);
+      return event;
+    };
     const evaluate = source => window.eval(source);
     const value = source => JSON.parse(evaluate('JSON.stringify(' + source + ')'));
     await callback({
       window, query: selector => window.document.querySelector(selector), evaluate, value,
-      originalStorage: JSON.stringify(records, null, 2), scrolls: window.__scrolls,
+      originalStorage: JSON.stringify(records, null, 2), scrolls: window.__scrolls, pointer, flushFrames,
     });
   } finally { frame.remove(); }
 }
@@ -289,6 +312,259 @@ test('styles stay scoped, IDs are unique and the blog link resolves to the blog 
     assert.equal(query('#back-blog').href, location.origin + '/#/');
     assert.equal(query('#show-hint').getAttribute('aria-controls'), 'hint-box');
   });
+});
+
+for (const language of ['ko', 'ja']) {
+  test(`squares (${language}): repeated wrong answers reveal nothing, preserve records, then accept the correct answer once`, async () => {
+    await withGame(({ query, value, window, originalStorage }) => {
+      query('#open-squares').click();
+      const before = value('({ currentBoard, currentAnswer, currentSolutions, puzzleNumber, records })');
+      for (const wrong of [before.currentAnswer + 1, before.currentAnswer + 2, before.currentAnswer + 1]) {
+        query('#answer-input').value = String(wrong);
+        query('#submit-answer').click();
+        assert.equal(query('#answer-feedback').textContent, language === 'ko' ? '오답입니다.' : '不正解です。');
+        assert.equal(query('#answer-input').disabled, false);
+        assert.equal(query('#submit-answer').disabled, false);
+        assert.equal(query('#give-up').hidden, false);
+        assert.equal(query('#next-puzzle').hidden, true);
+        assert.equal(query('#solution-panel').hidden, true);
+        assert.equal(query('#solution-list').children.length, 0);
+        assert.equal(window.localStorage.getItem(recordsKey), originalStorage);
+        assert.deepEqual(value('({ currentBoard, currentAnswer, currentSolutions, puzzleNumber, records })'), before);
+      }
+      // Even dispatching a hidden Next button cannot skip an unanswered puzzle.
+      query('#next-puzzle').dispatchEvent(new window.Event('click'));
+      assert.equal(value('puzzleNumber'), before.puzzleNumber);
+      query('#answer-input').value = String(before.currentAnswer);
+      query('#answer-input').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter' }));
+      assert.equal(value('records.played'), 9);
+      assert.equal(value('records.correct'), 7);
+      assert.equal(value('records.currentStreak'), 3);
+      assert.equal(value('records.history[0].correct'), true);
+      query('#submit-answer').click();
+      assert.equal(value('records.played'), 9);
+      assert.equal(query('#solution-panel').hidden, false);
+    }, { language });
+  });
+
+  test(`squares (${language}): give up locks input, records once, preserves all solutions and waits for Next`, async () => {
+    await withGame(({ query, value, window, evaluate }) => {
+      query('#open-squares').click();
+      query('#show-hint').click();
+      const before = value('({ currentBoard, currentAnswer, currentSolutions, currentHint, puzzleNumber })');
+      query('#answer-input').value = String(before.currentAnswer + 1);
+      query('#submit-answer').click();
+      query('#give-up').click();
+      assert.equal(query('#answer-input').disabled, true);
+      assert.equal(query('#submit-answer').disabled, true);
+      assert.equal(query('#give-up').hidden, true);
+      assert.equal(query('#new-puzzle').disabled, true);
+      assert.equal(query('#board-size').disabled, true);
+      assert.equal(query('#next-puzzle').hidden, false);
+      assert.equal(window.document.activeElement.id, 'next-puzzle');
+      assert.equal(query('#solution-panel').hidden, false);
+      assert.equal(query('#solution-list').children.length, before.currentAnswer);
+      assert.ok(query('#solution-summary').textContent.includes(String(before.currentAnswer)));
+      assert.equal(value('records.played'), 9);
+      assert.equal(value('records.correct'), 6);
+      assert.equal(value('records.currentStreak'), 0);
+      assert.equal(value('records.history[0].correct'), false);
+      assert.equal(value('records.history[0].hintUsed'), true);
+      assert.deepEqual(value('records.history.slice(-2)'), legacyRecords.history);
+      const stored = window.localStorage.getItem(recordsKey);
+      evaluate('giveUp(); submitAnswer();');
+      query('#answer-input').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter' }));
+      assert.equal(window.localStorage.getItem(recordsKey), stored);
+      before.currentSolutions.forEach((solution, index) => {
+        const button = query('#solution-list').children[index].firstElementChild;
+        button.click();
+        assert.equal(button.getAttribute('aria-pressed'), 'true');
+        const highlighted = Array.from(window.document.querySelectorAll('.solution-cell'));
+        assert.equal(highlighted.length, (solution.bottom - solution.top + 1) * (solution.right - solution.left + 1));
+        assert.equal(highlighted.reduce((sum, cell) => sum + Number(cell.textContent), 0), Number(query('#target-number').textContent));
+      });
+      query(language === 'ko' ? '#language-ja' : '#language-ko').click();
+      assert.deepEqual(value('({ currentBoard, currentAnswer, currentSolutions, currentHint, puzzleNumber })'), before);
+      assert.equal(query('#solution-title').textContent, language === 'ko' ? '解説' : '풀이');
+      assert.equal(query('#hint-box').hidden, false);
+      assert.equal(query('#board-size').disabled, true);
+      query('#new-puzzle').click();
+      assert.equal(value('puzzleNumber'), before.puzzleNumber);
+      query('#next-puzzle').click();
+      assert.equal(value('puzzleNumber'), before.puzzleNumber + 1);
+      assert.equal(query('#answer-input').disabled, false);
+      assert.equal(query('#new-puzzle').disabled, false);
+      assert.equal(query('#board-size').disabled, false);
+      assert.equal(query('#give-up').hidden, false);
+      assert.equal(query('#next-puzzle').hidden, true);
+      assert.equal(query('#solution-panel').hidden, true);
+      assert.equal(query('#solution-list').children.length, 0);
+      assert.equal(window.document.querySelectorAll('.solution-cell').length, 0);
+    }, { language });
+  });
+}
+
+test('give up without a valid answer records an unanswered failure and survives reload', async () => {
+  for (const raw of ['', '-1', '1.5']) {
+    let saved;
+    await withGame(({ query, value, window }) => {
+      query('#open-squares').click();
+      query('#answer-input').value = raw;
+      query('#give-up').click();
+      assert.equal(value('records.history[0].answer'), null);
+      assert.equal(value('records.history[0].correct'), false);
+      assert.equal(value('records.played'), 9);
+      assert.match(query('#history-list').textContent, /미입력/);
+      saved = JSON.parse(window.localStorage.getItem(recordsKey));
+    });
+    await withGame(({ query, value }) => {
+      assert.deepEqual(value('records'), saved);
+      assert.match(query('#history-list').textContent, /未入力/);
+    }, { language: 'ja', records: saved });
+  }
+});
+
+test('storage disabled: wrong retries and give up still expose solutions and allow Next', async () => {
+  await withGame(({ query, value }) => {
+    query('#open-squares').click();
+    query('#answer-input').value = String(value('currentAnswer') + 1);
+    query('#submit-answer').click();
+    assert.equal(query('#answer-feedback').textContent, '오답입니다.');
+    assert.equal(value('records.played'), 0);
+    query('#give-up').click();
+    assert.equal(query('#solution-panel').hidden, false);
+    assert.ok(query('#solution-list').children.length);
+    assert.match(query('#answer-feedback').textContent, /저장/);
+    query('#next-puzzle').click();
+    assert.equal(query('#answer-input').disabled, false);
+  }, { blockedStorage: true });
+});
+
+for (const pointerType of ['mouse', 'touch']) {
+  test(`cubes: continuous ${pointerType} drag, tilt, pointer capture, reset and locale preservation`, async () => {
+    await withGame(({ query, value, window, pointer, flushFrames, originalStorage }) => {
+      query('#open-cubes').click();
+      query('#show-hint').click();
+      query('#show-columns').click();
+      query('#answer-input').value = '12';
+      const before = value('({ currentBoard, currentAnswer, currentHint, puzzleNumber, records })');
+      const geometry = query('#board').innerHTML;
+      const initialYaw = value('cubeYaw');
+      const initialPitch = value('cubePitch');
+      pointer('pointerdown', { pointerType, clientX: 100, clientY: 100 });
+      assert.equal(query('#board').hasPointerCapture(1), true);
+      pointer('pointermove', { pointerType, clientX: 101, clientY: 102 });
+      assert.ok(value('cubeYaw') > initialYaw);
+      assert.ok(value('cubeYaw') - initialYaw < 0.1);
+      assert.ok(value('cubePitch') > initialPitch);
+      flushFrames();
+      assert.notEqual(query('#board').innerHTML, geometry);
+      pointer('pointermove', { pointerType, clientX: 190, clientY: 155 });
+      pointer('pointerup', { pointerType });
+      flushFrames();
+      assert.equal(query('#board').hasPointerCapture(1), false);
+      assert.equal(query('#board').classList.contains('dragging'), false);
+      const view = value('({ cubeYaw, cubePitch })');
+      query('#language-ja').click();
+      assert.deepEqual(value('({ cubeYaw, cubePitch })'), view);
+      assert.equal(query('#answer-input').value, '12');
+      assert.equal(query('#hint-box').hidden, false);
+      assert.equal(query('#column-view').hidden, false);
+      assert.match(query('#cube-drag-guide').textContent, /ドラッグ/);
+      assert.deepEqual(value('({ currentBoard, currentAnswer, currentHint, puzzleNumber, records })'), before);
+      assert.equal(window.localStorage.getItem(recordsKey), originalStorage);
+      query('#reset-cube-view').click();
+      flushFrames();
+      assert.equal(value('cubeYaw'), initialYaw);
+      assert.equal(value('cubePitch'), initialPitch);
+      assert.equal(query('#board').innerHTML, geometry);
+      assert.deepEqual(value('({ currentBoard, currentAnswer, currentHint, puzzleNumber, records })'), before);
+    });
+  });
+}
+
+test('cubes: secondary input, cancellation, lost capture, blur and navigation never leave a stuck drag', async () => {
+  await withGame(({ query, value, pointer, window, flushFrames }) => {
+    query('#open-cubes').click();
+    for (const options of [{ button: 2 }, { isPrimary: false }]) {
+      pointer('pointerdown', options);
+      assert.equal(value('cubeDrag'), null);
+    }
+    for (const end of ['pointercancel', 'lostpointercapture', 'blur', 'navigation']) {
+      pointer('pointerdown', { clientX: 10, clientY: 10 });
+      pointer('pointerdown', { pointerId: 2, clientX: 50, clientY: 50 });
+      assert.equal(value('cubeDrag.id'), 1);
+      const view = value('({ cubeYaw, cubePitch })');
+      pointer('pointermove', { pointerId: 2, clientX: 100, clientY: 100 });
+      pointer('pointerup', { pointerId: 2 });
+      assert.deepEqual(value('({ cubeYaw, cubePitch })'), view);
+      if (end === 'blur') window.dispatchEvent(new window.Event('blur'));
+      else if (end === 'navigation') query('#back-home').click();
+      else pointer(end);
+      assert.equal(value('cubeDrag'), null);
+      assert.equal(query('#board').classList.contains('dragging'), false);
+      pointer('pointermove', { clientX: 400, clientY: 400 });
+      flushFrames();
+      assert.deepEqual(value('({ cubeYaw, cubePitch })'), view);
+    }
+    query('#open-squares').click();
+    assert.equal(query('#cube-controls').hidden, true);
+    assert.equal(query('#board').hasAttribute('tabindex'), false);
+    pointer('pointerdown');
+    assert.equal(value('cubeDrag'), null);
+  });
+});
+
+test('cubes: every size retains column heights, hints and solution totals through rotation', async () => {
+  await withGame(({ query, value, window, evaluate, flushFrames }) => {
+    query('#open-cubes').click();
+    for (const size of [3, 4, 5]) {
+      query('#board-size').value = String(size);
+      query('#board-size').dispatchEvent(new window.Event('change'));
+      assert.equal(query('#column-view').hidden, true);
+      query('#show-columns').click();
+      assert.equal(query('#show-columns').getAttribute('aria-expanded'), 'true');
+      assert.deepEqual(Array.from(query('#column-view').children, cell => Number(cell.textContent)), value('currentBoard.flat()'));
+      const total = value('currentAnswer');
+      for (const pitch of [0.12, Math.PI / 6, 1.4]) {
+        for (let turn = 0; turn < 8; turn++) {
+          evaluate(`cubeYaw = ${turn * Math.PI / 4}; cubePitch = ${pitch}; renderCubeStack(currentBoard);`);
+          const svg = query('#board svg');
+          const [left, top, width, height] = svg.getAttribute('viewBox').split(' ').map(Number);
+          assert.equal(window.document.querySelectorAll('.cube-top-face').length, size * size);
+          for (const face of svg.children) {
+            for (const pair of face.getAttribute('points').split(' ')) {
+              const [x, y] = pair.split(',').map(Number);
+              assert.ok(Number.isFinite(x) && x >= left && x <= left + width);
+              assert.ok(Number.isFinite(y) && y >= top && y <= top + height);
+            }
+          }
+        }
+      }
+      query('#board').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowDown', cancelable: true }));
+      flushFrames();
+      assert.ok(value('cubePitch') <= 1.4);
+      query('#answer-input').value = String(total);
+      query('#submit-answer').click();
+      assert.equal(query('#solution-panel').hidden, false);
+      assert.equal(query('#solution-list').children.length, size);
+      assert.ok(query('#solution-summary').textContent.includes(String(total)));
+      assert.equal(value('records.history[0].solution'), total);
+    }
+  });
+});
+
+test('translations have matching keys and scoped touch behavior only disables scrolling on the cube board', async () => {
+  await withGame(({ value }) => assert.deepEqual(value('Object.keys(copy.ko).sort()'), value('Object.keys(copy.ja).sort()')));
+  const sheet = new CSSStyleSheet();
+  sheet.replaceSync(cssText);
+  const visit = rules => {
+    for (const rule of rules) {
+      if (rule.style?.getPropertyValue('touch-action') === 'none') assert.equal(rule.selectorText, '.devil-game .cube-board');
+      if (rule.cssRules) visit(rule.cssRules);
+    }
+  };
+  visit(sheet.cssRules);
 });
 
 (async () => {

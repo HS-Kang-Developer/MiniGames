@@ -20,6 +20,15 @@ const copy = {
     newPuzzle: '새 문제', blank: '빈칸', boardNote: '격자 선을 따라 만든 직사각형을 셉니다. 한 칸짜리도 포함돼요.',
     targetLabel: 'TARGET NUMBER', targetCaption: '네모 안 숫자의 합', totalCubesLabel: 'TOTAL CUBES', cubeCaption: '쌓인 큐브의 전체 개수',
     cubeBoardNote: '가려진 큐브까지 포함해 구조물의 큐브 전체 개수를 세어보세요.', answerLabel: '정답 입력', answerPlaceholder: '개수', answerUnit: '개',
+    giveUp: '포기', retryIncorrect: '오답입니다.', solutionTitle: '풀이', unanswered: '미입력',
+    givenUp: ({ answer }) => `포기했습니다. 정답은 ${answer}개입니다. 풀이를 확인한 뒤 다음 문제를 눌러주세요.`,
+    solutionSummary: ({ answer }) => `정답은 ${answer}개입니다. 아래 항목을 누르면 해당 네모를 격자에서 확인할 수 있어요.`,
+    solutionRectangle: ({ top, left, bottom, right, sum }) => `${top + 1}행 ${left + 1}열 ~ ${bottom + 1}행 ${right + 1}열 · 합 ${sum}`,
+    cubeDragGuide: '마우스나 손가락으로 드래그해 회전하고 기울여 보세요. 방향키로도 조작할 수 있어요.',
+    resetView: '시점 초기화', showColumns: '기둥별 보기', hideColumns: '기둥별 보기 닫기',
+    cubeColumn: ({ row, column, height }) => `${row}행 ${column}열: ${height}개`,
+    cubeSolution: ({ answer }) => `기둥별 높이를 모두 더하면 ${answer}개입니다.`,
+    cubeSolutionRow: ({ row, heights, total }) => `${row}행: ${heights.join(' + ')} = ${total}`,
     submit: '확인', hint: '힌트 보기', hideHint: '힌트 숨기기', next: '다음 문제',
     streakKicker: 'STREAK CHALLENGE', streakUnit: '연속 정답', bestLabel: '최고 기록',
     streakDescription: '정답을 이어가며<br />나만의 기록을 세워보세요.',
@@ -62,6 +71,15 @@ const copy = {
     newPuzzle: '新しい問題', blank: '空白', boardNote: 'マス目の線に沿った長方形を数えます。1マスも含みます。',
     targetLabel: '目標の数字', targetCaption: '四角の中の数字の合計', totalCubesLabel: 'キューブの総数', cubeCaption: '積み上がったキューブの数',
     cubeBoardNote: '隠れているキューブも含めて、構造全体の数を数えましょう。', answerLabel: '答えを入力', answerPlaceholder: '個数', answerUnit: '個',
+    giveUp: 'あきらめる', retryIncorrect: '不正解です。', solutionTitle: '解説', unanswered: '未入力',
+    givenUp: ({ answer }) => `正解は${answer}個です。解説を確認してから「次の問題へ」を押してください。`,
+    solutionSummary: ({ answer }) => `正解は${answer}個です。項目を押すと、その四角をマス目で確認できます。`,
+    solutionRectangle: ({ top, left, bottom, right, sum }) => `${top + 1}行${left + 1}列 ~ ${bottom + 1}行${right + 1}列・合計${sum}`,
+    cubeDragGuide: 'マウスや指でドラッグすると、回転や傾きを調整できます。矢印キーでも操作できます。',
+    resetView: '視点をリセット', showColumns: '柱ごとに表示', hideColumns: '柱ごとの表示を閉じる',
+    cubeColumn: ({ row, column, height }) => `${row}行${column}列：${height}個`,
+    cubeSolution: ({ answer }) => `柱の高さをすべて足すと${answer}個です。`,
+    cubeSolutionRow: ({ row, heights, total }) => `${row}行：${heights.join(' + ')} = ${total}`,
     submit: '回答する', hint: 'ヒントを見る', hideHint: 'ヒントを閉じる', next: '次の問題へ',
     streakKicker: '連続正解チャレンジ', streakUnit: '連続正解', bestLabel: 'ベスト記録',
     streakDescription: '正解を続けて、<br />自己ベストを更新しましょう。',
@@ -98,6 +116,12 @@ const dimensionsElement = document.querySelector('#board-dimensions');
 const hintBox = document.querySelector('#hint-box');
 const hintButton = document.querySelector('#show-hint');
 const nextButton = document.querySelector('#next-puzzle');
+const giveUpButton = document.querySelector('#give-up');
+const solutionPanel = document.querySelector('#solution-panel');
+const columnView = document.querySelector('#column-view');
+const columnsButton = document.querySelector('#show-columns');
+const defaultCubeYaw = Math.PI / 4;
+const defaultCubePitch = Math.PI / 6;
 
 let puzzleNumber = 0;
 let currentGame = 'squares';
@@ -107,6 +131,12 @@ let currentSolutions = [];
 let currentHint = null;
 let currentFeedback = { key: 'ready', values: {} };
 let hasAnswered = false;
+let hasGivenUp = false;
+let selectedSolution = 0;
+let cubeYaw = defaultCubeYaw;
+let cubePitch = defaultCubePitch;
+let cubeDrag = null;
+let cubeFrame = null;
 let hintUsed = false;
 let language = loadLanguage();
 let records = loadRecords();
@@ -142,6 +172,8 @@ function setLanguage(nextLanguage) {
   }
   setFeedback(currentFeedback.key, currentFeedback.values);
   renderHint();
+  renderSolution();
+  renderColumns();
 }
 
 function applyLanguage() {
@@ -160,7 +192,8 @@ function applyLanguage() {
     'back-label': 'back', 'game-kicker': 'gameKicker', 'size-label': 'sizeLabel',
     'new-puzzle-label': 'newPuzzle', 'blank-label': 'blank', 'board-note': 'boardNote',
     'target-label': 'targetLabel', 'target-caption': 'targetCaption', 'answer-label': 'answerLabel',
-    'submit-label': 'submit', 'next-label': 'next', 'streak-kicker': 'streakKicker', 'streak-unit': 'streakUnit',
+    'give-up': 'giveUp', 'solution-title': 'solutionTitle', 'cube-drag-guide': 'cubeDragGuide',
+    'reset-cube-view': 'resetView', 'submit-label': 'submit', 'next-label': 'next', 'streak-kicker': 'streakKicker', 'streak-unit': 'streakUnit',
     'best-line-label': 'bestLabel', 'rules-title': 'rulesTitle', 'rule-1': 'rule1', 'rule-2': 'rule2',
     'rule-3': 'rule3', 'tip-label': 'tipLabel', 'rule-tip-text': 'tipText',
     'home-footer-label': 'homeFooter', 'game-footer-label': 'gameFooter',
@@ -188,6 +221,7 @@ function applyLanguage() {
   document.querySelector('meta[name="description"]').content = t('description');
   if (hintBox.hidden) hintButton.querySelector('#hint-label').textContent = t('hint');
   else hintButton.querySelector('#hint-label').textContent = t('hideHint');
+  columnsButton.textContent = t(columnView.hidden ? 'showColumns' : 'hideColumns');
   updateGameLabels();
   updateBoardDimensions();
 }
@@ -195,6 +229,15 @@ function applyLanguage() {
 function updateGameLabels() {
   const cubes = currentGame === 'cubes';
   document.querySelector('.legend').hidden = cubes;
+  document.querySelector('#cube-controls').hidden = !cubes;
+  giveUpButton.hidden = cubes || hasAnswered;
+  if (cubes) {
+    boardElement.tabIndex = 0;
+    boardElement.setAttribute('aria-describedby', 'cube-drag-guide');
+  } else {
+    boardElement.removeAttribute('tabindex');
+    boardElement.removeAttribute('aria-describedby');
+  }
   document.querySelector('#game-title').textContent = t(cubes ? 'cubesTitle' : 'squaresTitle');
   document.querySelector('#game-kicker').textContent = t(cubes ? 'cubeKicker' : 'gameKicker');
   document.querySelector('#selected-game-index').textContent = cubes ? '02' : '01';
@@ -288,56 +331,186 @@ function renderBoard(board) {
   });
 }
 
+// Orthographic 3D projection keeps the existing SVG palette without a WebGL dependency.
+// Only exposed faces facing the camera are drawn, ordered from back to front.
 function renderCubeStack(heights) {
   const size = heights.length;
-  const cellWidth = 36;
-  const cellDepth = 20;
   const maxHeight = Math.max(...heights.flat());
-  const margin = 18;
-  const width = size * cellWidth + margin * 2;
-  const height = (size - 1) * cellDepth + maxHeight * cellDepth + cellDepth + margin * 2;
-  const pieces = [];
-  const columns = [];
-  heights.forEach((row, rowIndex) => row.forEach((stackHeight, columnIndex) => {
-    columns.push({ row: rowIndex, column: columnIndex, stackHeight });
-  }));
-  columns.sort((a, b) => (a.row + a.column) - (b.row + b.column) || a.row - b.row);
-
-  const halfWidth = cellWidth / 2;
-  const halfDepth = cellDepth / 2;
-  for (const column of columns) {
-    const { row, column: col, stackHeight } = column;
-    const centerX = margin + halfWidth + ((col - row + size - 1) * halfWidth);
-    const baseY = margin + ((row + col) * halfDepth) + maxHeight * cellDepth;
-    const topY = baseY - stackHeight * cellDepth;
-
-    for (let level = 0; level < stackHeight; level += 1) {
-      const y = topY + level * cellDepth;
-      const leftFace = `${centerX - halfWidth},${y + halfDepth} ${centerX},${y + cellDepth} ${centerX},${y + cellDepth * 2} ${centerX - halfWidth},${y + halfDepth + cellDepth}`;
-      const rightFace = `${centerX},${y + cellDepth} ${centerX + halfWidth},${y + halfDepth} ${centerX + halfWidth},${y + halfDepth + cellDepth} ${centerX},${y + cellDepth * 2}`;
-      pieces.push(`<polygon class="cube-left-face" points="${leftFace}" />`);
-      pieces.push(`<polygon class="cube-right-face" points="${rightFace}" />`);
+  const sinYaw = Math.sin(cubeYaw);
+  const cosYaw = Math.cos(cubeYaw);
+  const sinPitch = Math.sin(cubePitch);
+  const cosPitch = Math.cos(cubePitch);
+  const project = ([x, y, z]) => {
+    x -= size / 2;
+    y -= size / 2;
+    z -= maxHeight / 2;
+    const depth = x * sinYaw + y * cosYaw;
+    return [x * cosYaw - y * sinYaw, depth * sinPitch - z * cosPitch, depth * cosPitch + z * sinPitch];
+  };
+  const faces = [];
+  const addFace = (vertices, normal, className) => {
+    if ((normal[0] * sinYaw + normal[1] * cosYaw) * cosPitch + normal[2] * sinPitch <= 0.00001) return;
+    const points = vertices.map(project);
+    faces.push({
+      depth: points.reduce((sum, point) => sum + point[2], 0) / points.length,
+      markup: `<polygon class="${className}" points="${points.map(point => point.slice(0, 2).map(value => value.toFixed(4)).join(',')).join(' ')}" />`,
+    });
+  };
+  heights.forEach((row, y) => row.forEach((height, x) => {
+    for (let z = 0; z < height; z += 1) {
+      if ((heights[y]?.[x - 1] ?? 0) <= z) {
+        addFace([[x, y, z], [x, y + 1, z], [x, y + 1, z + 1], [x, y, z + 1]], [-1, 0, 0], 'cube-left-face');
+      }
+      if ((heights[y]?.[x + 1] ?? 0) <= z) {
+        addFace([[x + 1, y, z], [x + 1, y + 1, z], [x + 1, y + 1, z + 1], [x + 1, y, z + 1]], [1, 0, 0], 'cube-right-face');
+      }
+      if ((heights[y - 1]?.[x] ?? 0) <= z) {
+        addFace([[x, y, z], [x + 1, y, z], [x + 1, y, z + 1], [x, y, z + 1]], [0, -1, 0], 'cube-right-face');
+      }
+      if ((heights[y + 1]?.[x] ?? 0) <= z) {
+        addFace([[x, y + 1, z], [x + 1, y + 1, z], [x + 1, y + 1, z + 1], [x, y + 1, z + 1]], [0, 1, 0], 'cube-left-face');
+      }
     }
-
-    const top = `${centerX},${topY} ${centerX + halfWidth},${topY + halfDepth} ${centerX},${topY + cellDepth} ${centerX - halfWidth},${topY + halfDepth}`;
-    const accent = (row + col) % 5 === 0 ? ' accent' : '';
-    pieces.push(`<polygon class="cube-top-face${accent}" points="${top}" />`);
-  }
-
-  boardElement.className = 'cube-board';
+    const accent = (x + y) % 5 === 0 ? ' accent' : '';
+    addFace([[x, y, height], [x + 1, y, height], [x + 1, y + 1, height], [x, y + 1, height]], [0, 0, 1], 'cube-top-face' + accent);
+  }));
+  faces.sort((a, b) => a.depth - b.depth);
+  // A stable bounding sphere prevents zoom jumps or clipping as the view changes.
+  const radius = Math.hypot(size, size, maxHeight) / 2 + 0.35;
+  boardElement.classList.add('cube-board');
+  boardElement.classList.remove('board');
   boardElement.setAttribute('role', 'img');
   boardElement.setAttribute('aria-label', t('cubeAria', { size }));
   boardElement.style.removeProperty('--cols');
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('viewBox', `${-radius} ${-radius} ${radius * 2} ${radius * 2}`);
   svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-  svg.innerHTML = pieces.join('');
+  // Use the same one-pixel borders at every viewport size.
+  svg.innerHTML = faces.map(face => face.markup).join('');
   boardElement.replaceChildren(svg);
+}
+
+function queueCubeRender() {
+  if (cubeFrame !== null) return;
+  cubeFrame = requestAnimationFrame(() => {
+    cubeFrame = null;
+    if (currentGame === 'cubes') renderCubeStack(currentBoard);
+  });
+}
+
+function rotateCube(dx, dy) {
+  // Scale movement to the viewport for consistent mouse and touch sensitivity.
+  const width = boardElement.getBoundingClientRect().width || 360;
+  cubeYaw = ((cubeYaw + dx * Math.PI * 2 / width) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+  cubePitch = Math.max(0.12, Math.min(1.4, cubePitch + dy * Math.PI / width));
+  queueCubeRender();
+}
+
+function endCubeDrag(event) {
+  if (!cubeDrag || (event && event.pointerId !== cubeDrag.id)) return;
+  const id = cubeDrag.id;
+  cubeDrag = null;
+  boardElement.classList.remove('dragging');
+  if (boardElement.hasPointerCapture?.(id)) boardElement.releasePointerCapture(id);
+}
+
+boardElement.addEventListener('pointerdown', (event) => {
+  if (currentGame !== 'cubes' || event.button !== 0 || event.isPrimary === false || cubeDrag) return;
+  cubeDrag = { id: event.pointerId, x: event.clientX, y: event.clientY };
+  boardElement.setPointerCapture(event.pointerId);
+  boardElement.classList.add('dragging');
+  event.preventDefault();
+});
+boardElement.addEventListener('pointermove', (event) => {
+  if (!cubeDrag || event.pointerId !== cubeDrag.id) return;
+  rotateCube(event.clientX - cubeDrag.x, event.clientY - cubeDrag.y);
+  cubeDrag.x = event.clientX;
+  cubeDrag.y = event.clientY;
+  event.preventDefault();
+});
+for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  boardElement.addEventListener(type, endCubeDrag);
+}
+window.addEventListener('blur', () => endCubeDrag());
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) endCubeDrag();
+});
+boardElement.addEventListener('keydown', (event) => {
+  if (currentGame !== 'cubes') return;
+  const moves = { ArrowLeft: [-12, 0], ArrowRight: [12, 0], ArrowUp: [0, -12], ArrowDown: [0, 12] };
+  if (!moves[event.key]) return;
+  event.preventDefault();
+  rotateCube(...moves[event.key]);
+});
+document.querySelector('#reset-cube-view').addEventListener('click', () => {
+  endCubeDrag();
+  cubeYaw = defaultCubeYaw;
+  cubePitch = defaultCubePitch;
+  queueCubeRender();
+});
+columnsButton.addEventListener('click', () => {
+  columnView.hidden = !columnView.hidden;
+  columnsButton.setAttribute('aria-expanded', String(!columnView.hidden));
+  columnsButton.textContent = t(columnView.hidden ? 'showColumns' : 'hideColumns');
+  renderColumns();
+});
+
+function renderColumns() {
+  if (currentGame !== 'cubes' || !currentBoard || columnView.hidden) return;
+  columnView.style.setProperty('--cols', currentBoard.length);
+  columnView.replaceChildren();
+  currentBoard.forEach((row, rowIndex) => row.forEach((height, columnIndex) => {
+    const cell = document.createElement('span');
+    cell.textContent = height;
+    cell.setAttribute('aria-label', t('cubeColumn', { row: rowIndex + 1, column: columnIndex + 1, height }));
+    columnView.append(cell);
+  }));
+}
+
+function selectSolution(index) {
+  selectedSolution = index;
+  const solution = currentSolutions[index];
+  if (!solution) return;
+  Array.from(boardElement.children).forEach((cell, cellIndex) => {
+    const row = Math.floor(cellIndex / currentBoard.length);
+    const column = cellIndex % currentBoard.length;
+    cell.classList.toggle('solution-cell', row >= solution.top && row <= solution.bottom && column >= solution.left && column <= solution.right);
+  });
+  document.querySelectorAll('.solution-item').forEach((button, buttonIndex) => {
+    button.setAttribute('aria-pressed', String(buttonIndex === index));
+  });
+}
+
+function renderSolution() {
+  solutionPanel.hidden = !hasAnswered;
+  if (!hasAnswered || !currentBoard) return;
+  document.querySelector('#solution-summary').textContent = t(currentGame === 'cubes' ? 'cubeSolution' : 'solutionSummary', { answer: currentAnswer });
+  const list = document.querySelector('#solution-list');
+  list.replaceChildren();
+  if (currentGame === 'cubes') {
+    currentBoard.forEach((heights, index) => {
+      const item = document.createElement('li');
+      item.textContent = t('cubeSolutionRow', { row: index + 1, heights, total: heights.reduce((sum, height) => sum + height, 0) });
+      list.append(item);
+    });
+    return;
+  }
+  currentSolutions.forEach((solution, index) => {
+    const item = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'solution-item';
+    button.textContent = t('solutionRectangle', solution);
+    button.addEventListener('click', () => selectSolution(index));
+    item.append(button);
+    list.append(item);
+  });
+  selectSolution(selectedSolution);
 }
 
 function setFeedback(key, values = {}) {
   currentFeedback = { key, values };
-  const state = key === 'correct' ? 'success' : ['invalid', 'incorrect', 'storageError'].includes(key) ? 'error' : '';
+  const state = key === 'correct' ? 'success' : ['invalid', 'incorrect', 'retryIncorrect', 'givenUp', 'storageError'].includes(key) ? 'error' : '';
   feedbackElement.textContent = t(key, values);
   feedbackElement.className = `feedback${state ? ` ${state}` : ''}`;
 }
@@ -376,7 +549,7 @@ function renderRecords() {
       : entry.date;
     const detail = document.createElement('span');
     detail.className = 'history-detail';
-    detail.textContent = t('historyDetail', { game: entry.game ?? 'squares', size: entry.size, target: entry.target, answer: entry.answer });
+    detail.textContent = t('historyDetail', { game: entry.game ?? 'squares', size: entry.size, target: entry.target, answer: entry.answer ?? t('unanswered') });
     const count = document.createElement('span');
     count.className = 'history-detail';
     count.textContent = t('historySolution', { solution: entry.solution, hintUsed: entry.hintUsed });
@@ -402,7 +575,28 @@ function renderHint() {
   });
 }
 
+function resetPuzzleControls() {
+  endCubeDrag();
+  if (cubeFrame !== null) cancelAnimationFrame(cubeFrame);
+  cubeFrame = null;
+  hasGivenUp = false;
+  selectedSolution = 0;
+  solutionPanel.hidden = true;
+  document.querySelector('#solution-list').replaceChildren();
+  document.querySelector('#solution-summary').textContent = '';
+  columnView.hidden = true;
+  columnView.replaceChildren();
+  columnsButton.setAttribute('aria-expanded', 'false');
+  columnsButton.textContent = t('showColumns');
+  sizeSelect.disabled = false;
+  document.querySelector('#new-puzzle').disabled = false;
+  giveUpButton.hidden = currentGame !== 'squares';
+  cubeYaw = defaultCubeYaw;
+  cubePitch = defaultCubePitch;
+}
+
 function startPuzzle() {
+  resetPuzzleControls();
   if (currentGame === 'cubes') startCubePuzzle();
   else startSquaresPuzzle();
 }
@@ -478,9 +672,32 @@ function submitAnswer() {
     return;
   }
 
-  hasAnswered = true;
   const enteredAnswer = Number(rawAnswer);
   const isCorrect = enteredAnswer === currentAnswer;
+  if (currentGame === 'squares' && !isCorrect) {
+    setFeedback('retryIncorrect');
+    answerInput.focus();
+    answerInput.select();
+    return;
+  }
+  finishAnswer(enteredAnswer, isCorrect);
+}
+
+function giveUp() {
+  if (currentGame !== 'squares' || hasAnswered) return;
+  const rawAnswer = answerInput.value.trim();
+  const enteredAnswer = rawAnswer !== '' && Number.isInteger(Number(rawAnswer)) && Number(rawAnswer) >= 0
+    ? Number(rawAnswer) : null;
+  hasGivenUp = true;
+  finishAnswer(enteredAnswer, false);
+  // The completed puzzle stays visible until the player chooses Next.
+  sizeSelect.disabled = true;
+  document.querySelector('#new-puzzle').disabled = true;
+  nextButton.focus();
+}
+
+function finishAnswer(enteredAnswer, isCorrect) {
+  hasAnswered = true;
   records.played += 1;
   if (isCorrect) {
     records.correct += 1;
@@ -489,7 +706,7 @@ function submitAnswer() {
     setFeedback('correct', { answer: currentAnswer, streak: records.currentStreak });
   } else {
     records.currentStreak = 0;
-    setFeedback('incorrect', { answer: currentAnswer });
+    setFeedback(hasGivenUp ? 'givenUp' : 'incorrect', { answer: currentAnswer });
   }
 
   records.history.unshift({
@@ -508,6 +725,8 @@ function submitAnswer() {
   answerInput.disabled = true;
   document.querySelector('#submit-answer').disabled = true;
   nextButton.hidden = false;
+  giveUpButton.hidden = true;
+  renderSolution();
 }
 
 function showHint() {
@@ -535,6 +754,7 @@ function showScreen(screenName) {
   const home = screenName === 'home';
   document.querySelector('#home-screen').hidden = !home;
   document.querySelector('#game-screen').hidden = home;
+  endCubeDrag();
   if (home) renderRecords();
   else startPuzzle();
   document.querySelector(home ? '#home-title' : '#game-title').focus({ preventScroll: true });
@@ -566,7 +786,8 @@ document.querySelector('#brand-home').addEventListener('click', (event) => {
   showScreen('home');
 });
 document.querySelector('#new-puzzle').addEventListener('click', startPuzzle);
-nextButton.addEventListener('click', startPuzzle);
+nextButton.addEventListener('click', () => { if (hasAnswered) startPuzzle(); });
+giveUpButton.addEventListener('click', giveUp);
 document.querySelector('#submit-answer').addEventListener('click', submitAnswer);
 hintButton.addEventListener('click', showHint);
 sizeSelect.addEventListener('change', startPuzzle);
