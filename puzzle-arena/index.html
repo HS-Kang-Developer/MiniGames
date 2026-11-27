@@ -42,7 +42,7 @@
 
         <div class="section-heading">
           <div><span class="section-kicker" id="library-kicker">GAME LIBRARY</span><h2 id="library-title">게임 선택</h2></div>
-          <span class="count-label"><b id="available-game-count">02</b><span id="available-count"> / 03 AVAILABLE</span></span>
+          <span class="count-label"><b id="available-game-count">04</b><span id="available-count"> / 04 AVAILABLE</span></span>
         </div>
 
         <div class="game-grid">
@@ -62,15 +62,9 @@
             <span class="card-bottom"><span id="card-cubes-tags">공간감각 · 관찰력</span><span class="card-arrow" aria-hidden="true">↗</span></span>
           </button>
 
-          <article class="game-card locked-card" aria-label="새 게임 준비 중">
-            <span class="card-topline"><span class="card-index" id="game-card-index-3">GAME 03</span><span class="coming-tag" id="coming-label-1">준비 중</span></span>
-            <span class="locked-art locked-art-red" aria-hidden="true"><span>?</span></span>
-            <span class="card-name" id="coming-title-1">새로운 게임</span>
-            <span class="card-desc" id="coming-desc-1">다음 두뇌 게임을 추가할 예정입니다.</span>
-            <span class="card-bottom"><span id="coming-bottom-1">COMING SOON</span><span class="lock-icon" aria-hidden="true">⌑</span></span>
-          </article>
-        </div>
-
+          <a class="game-card featured-card" href="new-games.html?game=color" style="text-decoration:none;color:inherit"><span class="card-topline">GAME 03 · PLAY</span><span class="card-art" style="font-size:40px;text-align:center">● ━ ●</span><span class="card-name" id="new-color-title">컬러 링크</span><span class="card-desc" id="new-color-desc">CPU / 로컬 2인 전략 대결</span></a><a class="game-card featured-card" href="new-games.html?game=equation" style="text-decoration:none;color:inherit"><span class="card-topline">GAME 04 · PLAY</span><span class="card-art" style="font-size:40px;text-align:center">＋ × ＝</span><span class="card-name" id="new-equation-title">수식 신호등</span><span class="card-desc" id="new-equation-desc">색상 힌트로 수식 추측</span></a>
+        </div><div hidden><span id="game-card-index-3"></span><span id="coming-label-1"></span><span id="coming-title-1"></span><span id="coming-desc-1"></span><span id="coming-bottom-1"></span></div>
+        <script>new MutationObserver(syncNewGames).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});function syncNewGames(){const j=document.documentElement.lang==='ja';document.getElementById('new-color-title').textContent=j?'カラーリンク':'컬러 링크';document.getElementById('new-color-desc').textContent=j?'CPU / 2人対戦':'CPU / 로컬 2인 전략 대결';document.getElementById('new-equation-title').textContent=j?'数式シグナル':'수식 신호등';document.getElementById('new-equation-desc').textContent=j?'色のヒントで数式を推測':'색상 힌트로 수식 추측'}</script>
         <section class="history-section" aria-labelledby="history-title">
           <div class="section-heading history-heading">
             <div><span class="section-kicker" id="history-kicker">RECENT ACTIVITY</span><h2 id="history-title">최근 기록</h2></div>
