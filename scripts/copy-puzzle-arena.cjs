@@ -6,7 +6,7 @@ if (!fs.existsSync(path.join(root, 'dist/sudoku-game/index.html'))) {
 }
 const target = path.join(root, 'dist/puzzle-arena');
 fs.mkdirSync(target, { recursive: true });
-for (const name of ['index.html', 'script.js', 'style.css']) {
+for (const name of ['index.html', 'script.js', 'style.css', 'new-games.html', 'new-games.js', 'color-worker.js']) {
   fs.copyFileSync(path.join(root, 'puzzle-arena', name), path.join(target, name));
 }
 console.log('Puzzle Arena copied to dist/puzzle-arena; Sudoku remains in dist/sudoku-game.');
