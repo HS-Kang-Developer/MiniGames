@@ -11,7 +11,7 @@ function renderGuide(){
   const list=(items)=>'<ol>'+items.map(([ko,ja])=>'<li>'+t(ko,ja)+'</li>').join('')+'</ol>';
   const para=(ko,ja)=>'<p>'+t(ko,ja)+'</p>';
   if(mode==='color'){
-    const route=Array.from({length:24},(_,i)=>{const a=[0,1,2,8,9,10],b=[12,13,14,15,16,17];const c=a.includes(i)?'a':b.includes(i)?'b':'';return '<span class="'+c+'">'+([0,10].includes(i)?'A':[12,17].includes(i)?'B':'')+'</span>'}).join('');
+    const route=Array.from({length:24},(_,i)=>{const a=[0,1,2,8,9,10],b=[18,19,20,21,22,23];const c=a.includes(i)?'a':b.includes(i)?'b':'';return '<span class="'+c+'">'+([0,10].includes(i)?'A':[18,23].includes(i)?'B':'')+'</span>'}).join('');
     $('guide-content').innerHTML=heading('게임 목표','ゲームの目的')+para('모든 색의 말이 서로 겹치지 않는 경로로 연결될 수 있도록 배치하면서 상대의 실수를 노리는 전략 게임입니다. 먼저 3점을 획득하면 승리합니다.','すべての色の駒を重ならない経路で結べるように配置しながら、相手のミスを狙う戦略ゲームです。先に3点を獲得すると勝利です。')+
     heading('모드와 난이도','モードと難易度')+'<table><thead><tr><th>'+t('난이도','難易度')+'</th><th>'+t('보드 / 색상','盤面 / 色数')+'</th><th>'+t('대결','対戦')+'</th></tr></thead><tbody><tr><td>'+t('쉬움','初級')+'</td><td>6×6 / 4</td><td>'+t('CPU · 2인','CPU・2人')+'</td></tr><tr><td>'+t('보통','中級')+'</td><td>8×8 / 8</td><td>'+t('CPU · 2인','CPU・2人')+'</td></tr><tr><td>'+t('고급','上級')+'</td><td>10×10 / 14</td><td>'+t('2인 전용','2人専用')+'</td></tr></tbody></table>'+
     heading('말 배치','駒の配置')+list([['첫 번째 플레이어는 말 1개를 놓습니다.','先攻は駒を1個置きます。'],['이후 서로 다른 색의 말 2개씩 번갈아 놓습니다. 남은 말 또는 선택 가능한 색이 부족하면 1개만 놓습니다.','以降、異なる色の駒を2個ずつ交互に置きます。残りの駒や選べる色が少ない場合は1個置きます。'],['색상을 선택하고 빈칸을 누른 다음 배치 확정을 누릅니다. 확정 전에는 취소할 수 있습니다.','色を選んで空きマスを押し、配置確定を押します。確定前なら取り消せます。'],['각 색은 최대 2개까지 놓을 수 있습니다.','各色の駒は最大2個まで置けます。']])+
